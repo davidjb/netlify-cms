@@ -148,6 +148,10 @@ class Backend {
     );
   }
 
+  getMedia() {
+    return this.implementation.getMedia();
+  }
+
   entryWithFormat(collectionOrEntity) {
     return (entry) => {
       const format = resolveFormat(collectionOrEntity, entry);
