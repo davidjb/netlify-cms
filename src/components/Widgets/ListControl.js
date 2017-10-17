@@ -1,13 +1,13 @@
 import PropTypes from 'prop-types';
 import React, { Component } from 'react';
 import { List, Map, fromJS } from 'immutable';
-import { sortable } from 'react-sortable';
+import { SortableContainer, SortableElement, SortableHandle } from 'react-sortable-hoc';
 import FontIcon from 'react-toolbox/lib/font_icon';
 import ObjectControl from './ObjectControl';
 import styles from './ListControl.css';
 
 function ListItem(props) {
-  return <div {...props} className={`list-item ${ props.className }`}>{props.children}</div>;
+  return <div {...props} className={`list-item ${ props.className || '' }`}>{props.children}</div>;
 }
 ListItem.propTypes = {
   className: PropTypes.string,
@@ -19,7 +19,12 @@ function valueToString(value) {
   return value ? value.join(',').replace(/,([^\s]|$)/g, ', $1') : '';
 }
 
-const SortableListItem = sortable(ListItem);
+const SortableListItem = SortableElement(ListItem);
+const DragHandle = SortableHandle(
+  () => <FontIcon value="drag_handle" className={styles.dragIcon} />
+);
+const SortableList = SortableContainer(({ items, renderItem }) =>
+  (<div>{items.map(renderItem)}</div>));
 
 const valueTypes = {
   SINGLE: 'SINGLE',
@@ -118,7 +123,7 @@ export default class ListControl extends Component {
     };
   }
 
-  objectLabel(item) {
+  objectLabel = (item) => {
     const { field } = this.props;
     const multiFields = field.get('fields');
     const singleField = field.get('field');
@@ -126,56 +131,53 @@ export default class ListControl extends Component {
     const value = multiFields ? item.get(multiFields.first().get('name')) : singleField.get('label');
     return value || `No ${ labelField.get('name') }`;
   }
-
-  handleSort = (obj) => {
-    this.setState({ draggingIndex: obj.draggingIndex });
-    if ('items' in obj) {
-      this.props.onChange(fromJS(obj.items));
-    }
+  
+  onSortEnd = ({ oldIndex, newIndex }) => {
+    const { value, onChange } = this.props;
+    const item = value.get(oldIndex);
+    const newValue = value.delete(oldIndex).insert(newIndex, item);
+    this.props.onChange(newValue);
   };
 
-  renderItem(item, index) {
-    const { value, field, getAsset, onAddAsset, onRemoveAsset } = this.props;
+  renderItem = (item, index) => {
+    const { field, getAsset, onAddAsset, onRemoveAsset } = this.props;
     const { itemStates } = this.state;
     const collapsed = itemStates.getIn([index, 'collapsed']);
     const classNames = [styles.item, collapsed ? styles.collapsed : styles.expanded];
 
-    return (<SortableListItem
-      key={index}
-      updateState={this.handleSort} // eslint-disable-line
-      items={value ? value.toJS() : []}
-      draggingIndex={this.state.draggingIndex}
-      sortId={index}
-      outline="list"
-    >
-      <div className={classNames.join(' ')}>
-        <button className={styles.toggleButton} onClick={this.handleToggle(index)}>
-          <FontIcon value={collapsed ? 'expand_more' : 'expand_less'} />
-        </button>
-        <FontIcon value="drag_handle" className={styles.dragIcon} />
-        <button className={styles.removeButton} onClick={this.handleRemove(index)}>
-          <FontIcon value="close" />
-        </button>
-        <div className={styles.objectLabel}>{this.objectLabel(item)}</div>
-        <ObjectControl
-          value={item}
-          field={field}
-          className={styles.objectControl}
-          onChange={this.handleChangeFor(index)}
-          getAsset={getAsset}
-          onAddAsset={onAddAsset}
-          onRemoveAsset={onRemoveAsset}
-        />
-      </div>
+    return (<SortableListItem className={classNames.join(' ')} index={index} key={`item-${ index }`}>
+      <button className={styles.toggleButton} onClick={this.handleToggle(index)}>
+        <FontIcon value={collapsed ? 'expand_more' : 'expand_less'} />
+      </button>
+      <DragHandle />
+      <button className={styles.removeButton} onClick={this.handleRemove(index)}>
+        <FontIcon value="close" />
+      </button>
+      <div className={styles.objectLabel}>{this.objectLabel(item)}</div>
+      <ObjectControl
+        value={item}
+        field={field}
+        className={styles.objectControl}
+        onChange={this.handleChangeFor(index)}
+        getAsset={getAsset}
+        onAddAsset={onAddAsset}
+        onRemoveAsset={onRemoveAsset}
+      />
     </SortableListItem>);
-  }
+  };
 
   renderListControl() {
     const { value, forID, field } = this.props;
     const listLabel = field.get('label');
 
     return (<div id={forID}>
-      {value && value.map((item, index) => this.renderItem(item, index))}
+      <SortableList
+        items={value || List()}
+        renderItem={this.renderItem}
+        onSortEnd={this.onSortEnd}
+        useDragHandle
+        lockAxis="y"
+      />
       <button className={styles.addButton} onClick={this.handleAdd}>
         <FontIcon value="add" className={styles.addButtonIcon} />
         <span className={styles.addButtonText}>new {listLabel}</span>
@@ -199,4 +201,4 @@ export default class ListControl extends Component {
       onBlur={this.handleCleanup}
     />);
   }
-}
+};
