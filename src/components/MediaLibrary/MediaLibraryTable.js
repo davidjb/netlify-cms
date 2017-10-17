@@ -1,10 +1,29 @@
 import React from 'react';
 import bytes from 'bytes';
 import { Table, TableHead, TableRow, TableCell } from 'react-toolbox/lib/table';
-import MediaLibraryHeadCellHOC from './MediaLibraryHeadCellHOC';
+import headCellTheme from './headCellTheme.css';
 import styles from './MediaLibrary.css';
 
 export default class MediaLibraryTable extends React.Component {
+  /**
+   * Because React Toolbox requires a specific hierarchy in it's nested
+   * components, we use this prop getter instead of wrapping `TableCell` in
+   * an HOC, as wrapping `TableCell` stops React Toolbox from processing the
+   * table cell.
+   */
+  getHeadCellProps(name, opts = {}) {
+    const { sort = true, style = {} } = opts;
+    const { hasMedia, getSortDirection, onSortClick } = this.props;
+    const canSort = hasMedia && sort;
+    const cursor = canSort ? 'pointer' : 'auto';
+    return {
+      theme: headCellTheme,
+      sorted: canSort ? getSortDirection(name) : null,
+      onClick: () => canSort && onSortClick(name),
+      style: { ...style, cursor },
+    };
+  }
+
   render () {
     const {
       data,
@@ -17,14 +36,15 @@ export default class MediaLibraryTable extends React.Component {
       onSortClick,
     } = this.props;
 
-    const HeadCell = MediaLibraryHeadCellHOC({ getSortDirection, onSortClick, hasMedia });
     return (
       <Table onRowSelect={idx => onRowSelect(data[idx])}>
         <TableHead>
-          <HeadCell name="image"/>
-          <HeadCell name="name" sort/>
-          <HeadCell name="type" sort/>
-          <HeadCell name="size" sort/>
+          <TableCell { ...this.getHeadCellProps('image', { sort: false, style: { width: '92px' } }) }>
+            Image
+          </TableCell>
+          <TableCell { ...this.getHeadCellProps('name') }>Name</TableCell>
+          <TableCell { ...this.getHeadCellProps('type') }>Type</TableCell>
+          <TableCell { ...this.getHeadCellProps('size') }>Size</TableCell>
         </TableHead>
         {
           data.map((file, idx) =>
