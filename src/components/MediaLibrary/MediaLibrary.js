@@ -1,16 +1,14 @@
 import React from 'react';
 import { connect } from 'react-redux';
 import { orderBy, get, last, isEmpty } from 'lodash';
-import { Table, TableHead, TableRow, TableCell } from 'react-toolbox/lib/table';
 import { Button, BrowseButton } from 'react-toolbox/lib/button';
-import bytes from 'bytes';
 import fuzzy from 'fuzzy';
 import Dialog from '../UI/Dialog';
 import { resolvePath } from '../../lib/pathHelper';
 import { changeDraftField } from '../../actions/entries';
 import { loadMedia, persistMedia, deleteMedia, insertMedia, closeMediaLibrary } from '../../actions/mediaLibrary';
+import MediaLibraryTable from './MediaLibraryTable';
 import styles from './MediaLibrary.css';
-import headCellTheme from './headCellTheme.css';
 
 const MEDIA_LIBRARY_SORT_KEY = 'cms.medlib-sort';
 const DEFAULT_SORT = [{ fieldName: 'name', direction: 'asc' }];
@@ -244,54 +242,16 @@ class MediaLibrary extends React.Component {
         />
         <div style={{ height: '100%', paddingBottom: '130px' }}>
           <div style={{ height: '100%', overflowY: 'auto' }} ref={ref => this.tableScrollRef = ref}>
-            <Table onRowSelect={idx => this.handleRowSelect(tableData[idx])}>
-              <TableHead>
-                <TableCell theme={headCellTheme} style={{ width: '92px' }}>
-                  Image
-                </TableCell>
-                <TableCell
-                  theme={headCellTheme}
-                  sorted={hasMedia ? this.getSortDirection('name') : null}
-                  onClick={() => hasMedia && this.handleSortClick('name')}
-                  style={{ cursor: hasMedia ? 'pointer' : 'auto' }}
-                >
-                  Name
-                </TableCell>
-                <TableCell
-                  theme={headCellTheme}
-                  sorted={hasMedia ? this.getSortDirection('type') : null}
-                  onClick={() => hasMedia && this.handleSortClick('type')}
-                  style={{ cursor: hasMedia ? 'pointer' : 'auto' }}
-                >
-                  Type
-                </TableCell>
-                <TableCell
-                  theme={headCellTheme}
-                  sorted={hasMedia ? this.getSortDirection('size') : null}
-                  onClick={() => hasMedia && this.handleSortClick('size')}
-                  style={{ cursor: hasMedia ? 'pointer' : 'auto' }}
-                >
-                  Size
-                </TableCell>
-              </TableHead>
-              {
-                tableData.map((file, idx) =>
-                  <TableRow key={idx} selected={this.state.selectedFile.id === file.id } onFocus={this.handleRowFocus} onBlur={this.handleRowBlur}>
-                    <TableCell>
-                      {
-                        !file.isImage ? null :
-                          <a href={file.url} target="_blank" tabIndex="-1">
-                            <img src={file.url} className={styles.thumbnail}/>
-                          </a>
-                      }
-                    </TableCell>
-                    <TableCell>{file.name}</TableCell>
-                    <TableCell>{file.type}</TableCell>
-                    <TableCell>{bytes(file.size, { decimalPlaces: 0 })}</TableCell>
-                  </TableRow>
-                )
-              }
-            </Table>
+            <MediaLibraryTable
+              data={tableData}
+              selectedFile={this.state.selectedFile}
+              hasMedia={hasMedia}
+              onRowSelect={this.handleRowSelect}
+              onRowFocus={this.handleRowFocus}
+              onRowBlur={this.handleRowBlur}
+              getSortDirection={this.getSortDirection}
+              onSortClick={this.handleSortClick}
+            />
             {hasMedia || shouldShowProgressBar ? null : <div style={{ height: '100%', width: '100%', position: 'absolute', top: '0', left: '0', display: 'flex', justifyContent: 'center', alignItems: 'center' }}><h1>{emptyMessage}</h1></div>}
           </div>
         </div>
