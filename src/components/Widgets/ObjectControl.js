@@ -30,7 +30,7 @@ export default class ObjectControl extends Component {
    * e.g. when debounced, always get the latest object value instead of usin
    * `this.props.value` directly.
    */
-  getObjectValue = () => this.props.value;
+  getObjectValue = () => this.props.value || Map();
 
   /*
    * Always update so that each nested widget has the option to update. This is
