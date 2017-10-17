@@ -6,7 +6,13 @@ import fuzzy from 'fuzzy';
 import Dialog from '../UI/Dialog';
 import { resolvePath } from '../../lib/pathHelper';
 import { changeDraftField } from '../../actions/entries';
-import { loadMedia, persistMedia, deleteMedia, insertMedia, closeMediaLibrary } from '../../actions/mediaLibrary';
+import {
+  loadMedia as loadMediaAction,
+  persistMedia as persistMediaAction,
+  deleteMedia as deleteMediaAction,
+  insertMedia as insertMediaAction,
+  closeMediaLibrary as closeMediaLibraryAction,
+} from '../../actions/mediaLibrary';
 import MediaLibraryTable from './MediaLibraryTable';
 import styles from './MediaLibrary.css';
 
@@ -23,8 +29,7 @@ class MediaLibrary extends React.Component {
   };
 
   componentDidMount() {
-    const { dispatch, closeMediaLibrary } = this.props;
-    dispatch(loadMedia({ query: this.state.query }));
+    this.props.loadMedia({ query: this.state.query });
   }
 
   componentWillReceiveProps(nextProps) {
@@ -75,7 +80,7 @@ class MediaLibrary extends React.Component {
   };
 
   handleClose = () => {
-    this.props.dispatch(closeMediaLibrary());
+    this.props.closeMediaLibrary();
   };
 
   handleRowSelect = row => {
@@ -106,31 +111,31 @@ class MediaLibrary extends React.Component {
   handlePersist = event => {
     event.stopPropagation();
     event.preventDefault();
-    const { dispatch, privateUpload } = this.props;
+    const { loadMedia, persistMedia, privateUpload } = this.props;
     const { files: fileList } = event.dataTransfer || event.target;
     const files = [...fileList];
     const file = files[0];
-    return dispatch(persistMedia(file, privateUpload))
-      .then(() => dispatch(loadMedia({ query: this.state.query })));
+    return persistMedia(file, privateUpload)
+      .then(() => loadMedia({ query: this.state.query }));
   };
 
   handleInsert = () => {
     const { selectedFile } = this.state;
     const { name, url, urlIsPublicPath } = selectedFile;
-    const { dispatch, config } = this.props;
-    const publicPath = urlIsPublicPath ? url : resolvePath(name, config.get('public_folder'));
-    dispatch(insertMedia(publicPath));
+    const { insertMedia, publicFolder } = this.props;
+    const publicPath = urlIsPublicPath ? url : resolvePath(name, publicFolder);
+    insertMedia(publicPath);
     this.handleClose();
   };
 
   handleDelete = () => {
     const { selectedFile } = this.state;
-    const { files, dispatch } = this.props;
+    const { files, deleteMedia } = this.props;
     if (!window.confirm('Are you sure you want to delete selected media?')) {
       return;
     }
     const file = files.find(file => selectedFile.id === file.id);
-    dispatch(deleteMedia(file))
+    deleteMedia(file)
       .then(() => {
         this.setState({ selectedFile: {} });
       });
@@ -138,7 +143,7 @@ class MediaLibrary extends React.Component {
 
   handleSearchKeyDown = (event, dynamicSearch) => {
     if (event.key === 'Enter' && dynamicSearch) {
-      this.props.dispatch(loadMedia({ query: this.state.query }));
+      this.props.loadMedia({ query: this.state.query });
     }
   };
 
@@ -260,9 +265,31 @@ class MediaLibrary extends React.Component {
   }
 }
 
-export default connect(state => {
-  return {
-    config: state.config,
-    ...state.mediaLibrary.toObject(),
+const mapStateToProps = state => {
+  const { config, mediaLibrary } = state;
+  const configProps = {
+    publicFolder: config.get('public_folder'),
   };
-})(MediaLibrary);
+  const mediaLibraryProps = {
+    isVisible: mediaLibrary.get('isVisible'),
+    canInsert: mediaLibrary.get('canInsert'),
+    files: mediaLibrary.get('files'),
+    dynamicSearch: mediaLibrary.get('dynamicSearch'),
+    forImage: mediaLibrary.get('forImage'),
+    isLoading: mediaLibrary.get('isLoading'),
+    isPersisting: mediaLibrary.get('isPersisting'),
+    isDeleting: mediaLibrary.get('isDeleting'),
+    privateUpload: mediaLibrary.get('privateUpload'),
+  };
+  return { ...configProps, ...mediaLibraryProps };
+};
+
+const mapDispatchToProps = {
+  loadMedia: loadMediaAction,
+  persistMedia: persistMediaAction,
+  deleteMedia: deleteMediaAction,
+  insertMedia: insertMediaAction,
+  closeMediaLibrary: closeMediaLibraryAction,
+};
+
+export default connect(mapStateToProps, mapDispatchToProps)(MediaLibrary);
